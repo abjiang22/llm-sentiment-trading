@@ -1,0 +1,8 @@
+# Vanilla
+For the following news headline, assign it a sentiment score from -1 to 1 where -1 is negative, 0 is neutral, and 1 is positive.
+
+# Economic
+For the following news headline, assign it a sentiment score from -1 to 1 indicating whether or not it signals positive or negative economic news.
+
+# Advanced
+For the following news headline, assign it a sentiment score from -1 to 1 indicating whether or not it signals positive or negative news for the price of the S&P500.

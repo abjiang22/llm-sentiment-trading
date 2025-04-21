@@ -1,2 +1,2 @@
 # cis4980thesis
-LLMs in Trading
+LLM Sentiment in Trading
