@@ -1,5 +1,4 @@
 .env
 /deprecated
-/data/news_4_24.db
-/data/news_backup.db
+/data
 /.venv
