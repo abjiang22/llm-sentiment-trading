@@ -5,6 +5,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import os
 from dotenv import load_dotenv
 from huggingface_hub import login
+import re
 login(token=os.getenv("HUGGINGFACE_TOKEN"))
 # === Load environment variables ===
 load_dotenv(override=True)
@@ -106,15 +107,22 @@ def format_prompt(headline, template_key="zero_shot"):
     template = PROMPT_TEMPLATES.get(template_key, PROMPT_TEMPLATES["zero_shot"])
     return template.format(headline=headline)
 
+def extract_score(output):
+    match = re.search(r"(-?\d+\.\d+)", output)
+    if match:
+        return max(-1.0, min(1.0, float(match.group(1))))
+    return 0.0
+
 def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
     prompts = [format_prompt(text, template_key) for text in texts]
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=10)
+        outputs = model.generate(**inputs, max_new_tokens=30)
     decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-    print("\n🔍 Last LLM output in batch:\n", decoded[-1], "\n" + "—" * 40)
-
+    print(f"\n🔍 Raw output: {decoded[-1]}")
+    print(f"🎯 Extracted score: {extract_score(decoded[-1])}")
+    
     results = []
     for output in decoded:
         try:
@@ -188,4 +196,4 @@ if __name__ == "__main__":
     db_path=NEWS_DB_PATH,
     table_name="master0",
     batch_size=8,
-    template_key="zero_shot")
+    template_key="few_shot")
