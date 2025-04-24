@@ -113,6 +113,8 @@ def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
         outputs = model.generate(**inputs, max_new_tokens=10)
     decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
+    print("\n🔍 Last LLM output in batch:\n", decoded[-1], "\n" + "—" * 40)
+
     results = []
     for output in decoded:
         try:
