@@ -110,5 +110,6 @@ def get_nyt_headlines(start_date_str, end_date_str, db_path=NEWS_DB_PATH):
 
 # === Entrypoint ===
 if __name__ == "__main__":
-    get_nyt_headlines('2018-12-25', '2018-12-31', db_path=NEWS_DB_PATH)
+    get_nyt_headlines('2025-04-01', '2025-04-14', db_path=NEWS_DB_PATH)
 # Completed: 2018-12-25 to 2025-04-14
+# Last run: 2025-04-23

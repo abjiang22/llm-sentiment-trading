@@ -166,5 +166,6 @@ def store_newsapi_data(start_date_str, end_date_str, db_path=NEWS_DB_PATH):
 # === Entrypoint ===
 
 if __name__ == "__main__":
-    store_newsapi_data("2018-12-25", "2018-12-31", db_path=NEWS_DB_PATH)
+    store_newsapi_data("2025-04-01", "2025-04-14", db_path=NEWS_DB_PATH)
 # Completed: 2018-12-25 to 2025-04-14
+# Last run: 2025-4-23

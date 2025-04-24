@@ -93,12 +93,62 @@ def run_resumable_finbert_probs(
         avg_neu = sum(p[1] for p in probs) / len(probs)
         avg_neg = sum(p[2] for p in probs) / len(probs)
         print(
-            f"✅ Up to row_id ({last_id_in_batch}/{total}) updated."
+            f"✅ Completed ({last_id_in_batch}/{total}). "
             f"Batch avg → pos: {avg_pos:.4f}, neu: {avg_neu:.4f}, neg: {avg_neg:.4f}"
         )
 
     conn.close()
     print(f"🎯 Completed: scored {processed} rows.")
 
-if __name__ == "__main__":
-    run_resumable_finbert_probs(db_path="data/news_backup.db")
+def add_finbert_sentiment_final(db_path, table_name):
+    """
+    Connects to a SQLite database, computes 'finbert_sentiment_final' 
+    (finbert_sentiment_pos - finbert_sentiment_neg), and updates the table.
+
+    Args:
+        db_path (str): Path to the SQLite database.
+        table_name (str): Name of the table to update.
+
+    Returns:
+        None
+    """
+    # Connect to database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Check if the new column already exists
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    existing_columns = {col[1] for col in cursor.fetchall()}
+    
+    if "finbert_sentiment_final" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN finbert_sentiment_final REAL")
+        print("✅ Added column 'finbert_sentiment_final'")
+    else:
+        print("⚠️ Column 'finbert_sentiment_final' already exists. Overwriting values.")
+    
+    # Update the table row-by-row
+    update_query = f"""
+    UPDATE {table_name}
+    SET finbert_sentiment_final = finbert_sentiment_pos - finbert_sentiment_neg
+    WHERE finbert_sentiment_pos IS NOT NULL AND finbert_sentiment_neg IS NOT NULL
+    """
+    cursor.execute(update_query)
+    
+    conn.commit()
+    conn.close()
+    print("✅ Finished updating 'finbert_sentiment_final' in table.")
+
+"""
+run_resumable_finbert_probs(
+    db_path=NEWS_DB_PATH,
+    table_name="master0",
+    batch_size=64
+)
+"""
+
+"""
+add_finbert_sentiment_final(
+    db_path=NEWS_DB_PATH,
+    table_name="master0"
+)
+"""

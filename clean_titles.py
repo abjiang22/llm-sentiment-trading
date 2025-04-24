@@ -42,5 +42,4 @@ def populate_title_clean(db_path="data/news.db", table_name="master0"):
     print(f"✅ title_clean column populated for table '{table_name}'.")
 
 # === Entrypoint ===
-if __name__ == "__main__":
-    populate_title_clean(db_path="data/news_backup.db", table_name="master0")
+populate_title_clean(db_path="data/news.db", table_name="master0")

@@ -1,3 +1,4 @@
+#FOR LOUGHRAN-MCDONALD SENTIMENT ANALYSIS - not to be confused with LLM
 import re
 import sqlite3
 import os
@@ -57,4 +58,4 @@ def run_lm_sentiment_scoring(db_path=NEWS_DB_PATH, table_name="master0",
     print(f"🎯 Completed: {total_rows} rows scored and saved to '{table_name}'.")
 
 # Example call
-run_lm_sentiment_scoring(db_path="data/news_backup.db")
+run_lm_sentiment_scoring(db_path="data/news.db")

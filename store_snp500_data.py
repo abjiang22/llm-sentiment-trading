@@ -104,6 +104,39 @@ def reorder_snp500(db_path=SNP_DB_PATH):
     print("\u2705 S&P 500 table reordered by ascending trade_date.")
     conn.close()
 
-reorder_snp500()
+def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
+
+    # Load the table into a DataFrame, sorted by trade_date
+    df = pd.read_sql_query(f"SELECT trade_id, trade_date, close_price FROM {table_name} ORDER BY trade_date", conn)
+
+    # Calculate percent change between current and previous close_price
+    df["percent_change_close"] = df["close_price"].pct_change() * 100
+    df["percent_change_close"] = df["percent_change_close"].round(4)
+
+    # Check if column exists, add it if not
+    cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "percent_change_close" not in columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN percent_change_close REAL")
+
+    # Write the percent_change values back into the database using trade_id
+    for row in df.itertuples():
+        if pd.notnull(row.percent_change_close):
+            cursor.execute(f"""
+                UPDATE {table_name}
+                SET percent_change_close = ?
+                WHERE trade_id = ?
+            """, (row.percent_change_close, row.trade_id))
+
+    conn.commit()
+    conn.close()
+    print("✅ percent_change_close column updated efficiently using pandas.")
+
+add_percent_change_column("data/snp500.db", "snp500")
+
+#reorder_snp500()
 
 # Note: Data stored from 12/25/2018 to 4/14/2025

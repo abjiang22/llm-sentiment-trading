@@ -1,8 +1,75 @@
-# Vanilla
-For the following news headline, assign it a sentiment score from -1 to 1 where -1 is negative, 0 is neutral, and 1 is positive.
+# Zero shot prompting
 
-# Economic
-For the following news headline, assign it a sentiment score from -1 to 1 indicating whether or not it signals positive or negative economic news.
+You are given a news headline, and your task is to output a float between -1 and 1 that represents the overall sentiment of the headline:
+1 = extremely positive sentiment
+-1 = extremely negative sentiment
+0 = neutral or no clear sentiment
 
-# Advanced
-For the following news headline, assign it a sentiment score from -1 to 1 indicating whether or not it signals positive or negative news for the price of the S&P500.
+Rules:
+Output only the float (no words, labels, or explanations).
+If the sentiment is mixed but leans positive, output a value between 0 and 1.
+If the sentiment is mixed but leans negative, output a value between -1 and 0.
+If no sentiment is expressed, output a value close to 0.
+
+Headline to score: []
+
+------------
+# Few shot prompting
+
+You are given a news headline, and your task is to output a float between -1 and 1 that represents the overall sentiment of the headline:
+1 = extremely positive sentiment
+-1 = extremely negative sentiment
+0 = neutral or no clear sentiment
+
+Rules:
+Output only the float (no words, labels, or explanations).
+If the sentiment is mixed but leans positive, output a value between 0 and 1.
+If the sentiment is mixed but leans negative, output a value between -1 and 0.
+If no sentiment is expressed, output a value close to 0.
+
+Examples:
+"Japan stocks plunge, other Asia markets fall after US losses" → -1
+"Today in History" → 0
+"Dow closes up more than 1,000 points in best day for Wall Street in 10 years as stocks rally back from Christmas Eve beating" → 1
+
+Headline to score: []
+
+------------
+# U.S. Economy Sentiment
+
+You are given a news headline. Your task is to output a single float between -1 and 1 representing the headline’s sentiment toward the U.S. economy:
+1 = extremely positive sentiment toward the U.S. economy
+-1 = extremely negative sentiment toward the U.S. economy
+0 = neutral, no clear sentiment, or not relevant to the U.S. economy
+
+Rules:
+Output only the float (no words, labels, or explanations).
+If the sentiment is mixed but leans positive, output a value between 0 and 1.
+If the sentiment is mixed but leans negative, output a value between -1 and 0.
+If no sentiment is expressed or the headline is unrelated to the U.S. economy, output a value close to 0.
+
+Examples:
+"Japan stocks plunge, other Asia markets fall after US losses" → -1
+"Today in History" → 0
+"Dow closes up more than 1,000 points in best day for Wall Street in 10 years as stocks rally back from Christmas Eve beating" → 1
+
+Headline to score: []
+------------
+# S&P 500 sentiment
+
+You are given a news headline published before the next U.S. trading day. Your task is to output a single float between -1 and 1 representing the headline’s predicted sentiment toward the movement of the S&P 500 index on the upcoming trading day:
+
+1 = extremely positive sentiment toward the S&P 500 (expecting a price increase)
+-1 = extremely negative sentiment toward the S&P 500 (expecting a price decrease)
+0 = neutral, no clear sentiment, or unrelated to the S&P 500 or broader U.S. market
+
+Rules:
+Output only the float (no words, labels, or explanations).
+If the sentiment is mixed but leans positive, output a value between 0 and 1.
+If the sentiment is mixed but leans negative, output a value between -1 and 0.
+If no sentiment is expressed or the headline is unrelated, output a value close to 0.
+
+Examples:
+"Stock markets tumble as investors pull back from American assets" → -1
+"Today in History" → 0
+"The Wall Street strategist who nailed the stock market’s recent mega-rallies sees a 10%-15% jump in the coming months" → 1

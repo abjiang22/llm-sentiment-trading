@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # === Load environment variables ===
 load_dotenv(override=True)
 GUARDIAN_API_KEY = os.getenv('GUARDIAN_API_KEY')
-NEWS_DB_PATH = os.getenv('NEWS_DB_PATH', 'News.db')
+NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
 
 # === Database Setup ===
 
@@ -136,5 +136,6 @@ def get_guardian_headlines(start_date_str, end_date_str, db_path=NEWS_DB_PATH):
 
 # === Entrypoint ===
 if __name__ == "__main__":
-    get_guardian_headlines("2018-12-25", "2018-12-31", db_path=NEWS_DB_PATH)
+    get_guardian_headlines("2025-04-01", "2025-04-14", db_path=NEWS_DB_PATH)
 # Completed: 2018-12-25 to 2025-04-14
+# Last run: 2025-4-23

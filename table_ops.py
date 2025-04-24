@@ -274,18 +274,26 @@ def filter_table_by_date(db_path, table_name, date_column, start_date=None, end_
 
 
 #rename_table('data/news.db', 'master0_filtered', 'master0')
-#reindex_table_by_column('data/news.db', 'master0_filtered', 'published_at')
 
-""" 
+"""
 filter_table_by_date(
     db_path="data/news.db",
     table_name="master0",
     date_column="published_at",
     start_date="2018-12-25",
     end_date="2025-04-14",
-    new_table_name="master0_filtered"
-) """
+    new_table_name="master0_4_23"
+)
+reindex_table_by_column('data/news.db', "master0_4_23", 'published_at')
+
+"""
 
 #copy_table('data/news.db', 'master0', 'master0_4_21')
-drop_table('data/news_backup.db', 'master0')
+#drop_table('data/news_backup.db', 'master0')
 #drop_column_rebuild_table('data/news.db', 'master0', 'finbert_sentiment_score')
+
+rename_table('data/news.db', 'master0', 'master0_4_23_1')
+rename_table('data/news.db', 'master0_4_23', 'master0')
+rename_table('data/news.db', 'master0_4_23_1', 'master0_4_23')
+
+

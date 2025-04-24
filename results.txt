@@ -1,0 +1,13 @@
+LM Regression Results
+  Slope: -0.8196
+  Intercept: -0.1084
+  Pearson R: -0.0284
+  R²: 0.0008
+  p-value: 2.5930e-01
+
+Finbert Regression Results:
+  Slope: 1.1504
+  Intercept: 0.1538
+  Pearson R: 0.0267
+  R²: 0.0007
+  p-value: 2.8764e-01

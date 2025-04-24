@@ -86,6 +86,6 @@ def merge_tables_into_master_and_reindex(db_path, tables, master_table="master0"
 tables_to_merge = ['apnews', 'bloomberg', 'businessinsider', 'financialpost', 'fortune', 'guardian', 'nyt', 'time', 'washingtonpost', 'wsj']
 
 merge_tables_into_master_and_reindex(
-    db_path="data/news_backup.db",
+    db_path="data/news.db",
     tables=tables_to_merge
 )
