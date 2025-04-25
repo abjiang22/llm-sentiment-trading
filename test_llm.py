@@ -31,7 +31,8 @@ Headline to score: "{headline}"
 MODELS = {
     "llama3": "meta-llama/Llama-3.2-3B-Instruct",
     "deepseek_r1": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-    "phi4": "microsoft/Phi-4-mini-instruct"
+    "phi4": "microsoft/Phi-4-mini-instruct",
+    "mistral": "mistral/Mistral-7B-Instruct"
 }
 
 def load_model(model_key):
