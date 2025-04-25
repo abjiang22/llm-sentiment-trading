@@ -1,3 +1,4 @@
+import argparse
 import torch
 import re
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -68,8 +69,15 @@ def test_llm_sentiment(model_key, headline, template_key="zero_shot"):
 
 # === Example usage ===
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run LLM sentiment analysis on a headline.")
+    parser.add_argument("--model", required=True, help=f"Model key. Options: {list(MODELS.keys())}")
+    parser.add_argument("--headline", required=True, help="News headline to score.")
+    parser.add_argument("--template", default="zero_shot", help=f"Prompt template key. Default is 'zero_shot'.")
+
+    args = parser.parse_args()
+
     test_llm_sentiment(
-        model_key="phi4",
-        headline="Markets rally after Fed signals rate cut",
-        template_key="zero_shot"
+        model_key=args.model,
+        headline=args.headline,
+        template_key=args.template
     )
