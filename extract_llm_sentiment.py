@@ -217,4 +217,4 @@ if __name__ == "__main__":
     db_path=NEWS_DB_PATH,
     table_name="master0",
     batch_size=128,
-    template_key="few_shot")
+    template_key="zero_shot")
