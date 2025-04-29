@@ -25,6 +25,8 @@ If the sentiment is mixed but leans negative, output a value between -1 and 0.
 If no sentiment is expressed, output a value close to 0.
 
 Headline to score: "{headline}"
+
+Answer:
 """.strip(),
     "few_shot": """
 You are given a news headline, and your task is to output a float between -1 and 1 that represents the overall sentiment of the headline:
@@ -44,6 +46,7 @@ Examples:
 "Dow closes up more than 1,000 points in best day for Wall Street in 10 years as stocks rally back from Christmas Eve beating" → 1
 
 Headline to score: "{headline}"
+Answer:
 """.strip(),
     "us_economy": """
 You are given a news headline. Your task is to output a single float between -1 and 1 representing the headline’s sentiment toward the U.S. economy:
@@ -63,6 +66,7 @@ Examples:
 "Dow closes up more than 1,000 points in best day for Wall Street in 10 years as stocks rally back from Christmas Eve beating" → 1
 
 Headline to score: "{headline}"
+Answer:
 """.strip(),
     "sp500_sentiment": """
 You are given a news headline published before the next U.S. trading day. Your task is to output a single float between -1 and 1 representing the headline’s predicted sentiment toward the movement of the S&P 500 index on the upcoming trading day:
@@ -83,6 +87,7 @@ Examples:
 "The Wall Street strategist who nailed the stock market's recent mega-rallies sees a 10-15% jump in the coming months" → 1
 
 Headline to score: "{headline}"
+Answer:
 """.strip()
 }
 
@@ -147,14 +152,14 @@ def run_resumable_llm_sentiment_prompt(
 
     cursor.execute(f"PRAGMA table_info({table_name})")
     existing = {row[1] for row in cursor.fetchall()}
-    if "llama_sentiment_score" not in existing:
-        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN llama_sentiment_score REAL")
+    if "llm_sentiment_score_{model_key}" not in existing:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN llm_sentiment_score_{model_key} REAL")
     conn.commit()
 
     cursor.execute(f"""
         SELECT id, title_clean
           FROM {table_name}
-         WHERE llama_sentiment_score IS NULL
+         WHERE llm_sentiment_score_{model_key} IS NULL
     """)
     rows = cursor.fetchall()
     total = len(rows)
@@ -173,7 +178,7 @@ def run_resumable_llm_sentiment_prompt(
         cursor.executemany(
             f"""
             UPDATE {table_name}
-               SET llama_sentiment_score = ?
+               SET llm_sentiment_score_{model_key} = ?
              WHERE id = ?
             """,
             updates
@@ -195,5 +200,5 @@ if __name__ == "__main__":
     model_key="deepseek_r1",
     db_path=NEWS_DB_PATH,
     table_name="master0",
-    batch_size=8,
+    batch_size=512,
     template_key="few_shot")

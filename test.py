@@ -1,13 +1,23 @@
 import sqlite3
-import pandas as pd
 
-
-# Connect to database
-conn = sqlite3.connect("data/news.db")
+# Connect to your database
+conn = sqlite3.connect('data/news.db')
 cursor = conn.cursor()
 
-# Load 100 rows of the table into a DataFrame
-df = pd.read_sql_query(f"SELECT * FROM master0 LIMIT 100", conn)
-for row in df.itertuples():
-    print(float(row.finbert_sentiment_neg) + float(row.finbert_sentiment_pos) + float(row.finbert_sentiment_neutral))
+# Execute the query
+cursor.execute('''
+    SELECT source, COUNT(*) AS article_count
+    FROM master0
+    GROUP BY source
+    ORDER BY article_count DESC
+''')
 
+# Fetch all results
+results = cursor.fetchall()
+
+# Display
+for source, count in results:
+    print(f"{source}: {count} articles")
+
+# Close the connection
+conn.close()
