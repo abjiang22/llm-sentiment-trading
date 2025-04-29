@@ -25,7 +25,6 @@ If the sentiment is mixed but leans negative, output a value between -1 and 0.
 If no sentiment is expressed, output a value close to 0.
 
 Headline to score: "{headline}"
-
 Answer:
 """.strip(),
     "few_shot": """
@@ -94,7 +93,7 @@ Answer:
 # === Define Available Models ===
 MODELS = {
     "llama3": "meta-llama/Llama-3.2-3B-Instruct",
-    "deepseek_r1": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+    "deepseek_r1": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
     "phi4": "microsoft/Phi-4-mini-instruct"
 }
 
@@ -200,5 +199,5 @@ if __name__ == "__main__":
     model_key="deepseek_r1",
     db_path=NEWS_DB_PATH,
     table_name="master0",
-    batch_size=512,
+    batch_size=16,
     template_key="few_shot")
