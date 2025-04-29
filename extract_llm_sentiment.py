@@ -112,7 +112,7 @@ def load_model(model_key="llama3"):
     model_name = MODELS.get(model_key)
     if not model_name:
         raise ValueError(f"Model key '{model_key}' not found. Available: {list(MODELS.keys())}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="/workspace/.hf_cache"))
+    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="/workspace/.hf_cache")
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto", cache_dir="/workspace/.hf_cache")
     model.eval()
     return tokenizer, model
