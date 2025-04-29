@@ -131,8 +131,14 @@ def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
     prompts = [format_prompt(text, template_key) for text in texts]
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=30)
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=15,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id
+        )
     decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+    decoded = [re.split(r"[<\n]", out.split("Answer:")[-1].strip())[0].strip() for out in decoded]
 
     print(f"\n🔍 Raw output: {decoded[-1]}")
     print(f"🎯 Extracted score: {extract_score(decoded[-1])}")
@@ -155,20 +161,21 @@ def run_resumable_llm_sentiment_prompt(
     template_key="zero_shot"
 ):
     tokenizer, model = load_model(model_key)
+    sentiment_column_name = f"llm_sentiment_score_{model_key}_{template_key}"
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute(f"PRAGMA table_info({table_name})")
     existing = {row[1] for row in cursor.fetchall()}
-    if "llm_sentiment_score_{model_key}" not in existing:
-        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN llm_sentiment_score_{model_key} REAL")
+    if sentiment_column_name not in existing:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {sentiment_column_name} REAL")
     conn.commit()
 
     cursor.execute(f"""
         SELECT id, title_clean
           FROM {table_name}
-         WHERE llm_sentiment_score_{model_key} IS NULL
+         WHERE {sentiment_column_name} IS NULL
     """)
     rows = cursor.fetchall()
     total = len(rows)
@@ -187,7 +194,7 @@ def run_resumable_llm_sentiment_prompt(
         cursor.executemany(
             f"""
             UPDATE {table_name}
-               SET llm_sentiment_score_{model_key} = ?
+               SET {sentiment_column_name} = ?
              WHERE id = ?
             """,
             updates
@@ -209,5 +216,5 @@ if __name__ == "__main__":
     model_key="deepseek_r1",
     db_path=NEWS_DB_PATH,
     table_name="master0",
-    batch_size=16,
+    batch_size=32,
     template_key="few_shot")
