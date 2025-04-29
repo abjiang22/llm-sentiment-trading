@@ -133,7 +133,7 @@ def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=15,
+            max_new_tokens=30,
             pad_token_id=tokenizer.eos_token_id,
             eos_token_id=tokenizer.eos_token_id
         )
@@ -216,5 +216,5 @@ if __name__ == "__main__":
     model_key="deepseek_r1",
     db_path=NEWS_DB_PATH,
     table_name="master0",
-    batch_size=32,
+    batch_size=128,
     template_key="few_shot")
