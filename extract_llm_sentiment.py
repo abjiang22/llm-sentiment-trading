@@ -1,15 +1,20 @@
 #FOR LARGE LANGUAGE MODEL SENTIMENT ANALYSIS - not to be confused with LM
+import os
+
+# These must be set before importing any Transformers or HF Hub modules
+os.environ["HF_HOME"] = "/workspace/.hf_cache"
+os.environ["TRANSFORMERS_CACHE"] = "/workspace/.hf_cache"
+os.environ["HF_DATASETS_CACHE"] = "/workspace/.hf_cache"
+os.environ["HF_METRICS_CACHE"] = "/workspace/.hf_cache"
+os.environ["HUGGINGFACE_HUB_CACHE"] = "/workspace/.hf_cache"
+
 import sqlite3
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-import os
 from dotenv import load_dotenv
 from huggingface_hub import login
 import re
 login(token=os.getenv("HUGGINGFACE_TOKEN"))
-
-os.environ["HF_HOME"] = "/workspace/.hf_cache"
-os.environ["TRANSFORMERS_CACHE"] = "/workspace/.hf_cache"
 
 
 # === Load environment variables ===
@@ -107,8 +112,8 @@ def load_model(model_key="llama3"):
     model_name = MODELS.get(model_key)
     if not model_name:
         raise ValueError(f"Model key '{model_key}' not found. Available: {list(MODELS.keys())}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
+    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="/workspace/.hf_cache"))
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto", cache_dir="/workspace/.hf_cache")
     model.eval()
     return tokenizer, model
 
