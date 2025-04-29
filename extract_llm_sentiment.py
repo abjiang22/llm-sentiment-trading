@@ -7,6 +7,11 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 import re
 login(token=os.getenv("HUGGINGFACE_TOKEN"))
+
+os.environ["HF_HOME"] = "/workspace/.hf_cache"
+os.environ["TRANSFORMERS_CACHE"] = "/workspace/.hf_cache"
+
+
 # === Load environment variables ===
 load_dotenv(override=True)
 NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
