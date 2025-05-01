@@ -103,7 +103,7 @@ Answer:
 # === Define Available Models ===
 MODELS = {
     "llama3": "meta-llama/Llama-3.2-3B-Instruct",
-    "deepseek_r1": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+    "deepseek_v3": "deepseek-ai/DeepSeek-V3",
     "phi4": "microsoft/Phi-4-mini-instruct"
 }
 
@@ -149,7 +149,7 @@ def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
             num = float(output.strip().splitlines()[-1])
             num = max(-1.0, min(1.0, num))
         except Exception:
-            num = 0.0
+            num = None
         results.append(num)
     return results
 
@@ -213,8 +213,8 @@ def run_resumable_llm_sentiment_prompt(
 
 if __name__ == "__main__":
     run_resumable_llm_sentiment_prompt(
-    model_key="deepseek_r1",
+    model_key="deepseek_v3",
     db_path=NEWS_DB_PATH,
     table_name="master0",
-    batch_size=128,
+    batch_size=64,
     template_key="zero_shot")

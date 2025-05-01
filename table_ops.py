@@ -303,6 +303,6 @@ rename_table('data/news.db', 'master0_4_23_1', 'master0_4_23')
 
 #rename_table('data/news.db', 'master0', 'master0_unfiltered_4_29')
 
-drop_table('data/news.db', 'master0_TESTTT')
-drop_table('data/news.db', 'master0_4_21')
-rename_table('data/news.db', 'master0', 'master0_unfiltered_4_29')
+#drop_table('data/news.db', 'master0_TESTTT')
+#drop_table('data/news.db', 'master0_4_21')
+rename_table('data/news.db', 'master0', 'master0_date_filtered_all_news_4_30')

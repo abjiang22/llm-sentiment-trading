@@ -7,7 +7,7 @@ cursor = conn.cursor()
 # Execute the query
 cursor.execute('''
     SELECT source, COUNT(*) AS article_count
-    FROM master0
+    FROM master0_date_filtered_all_news_4_30
     GROUP BY source
     ORDER BY article_count DESC
 ''')
