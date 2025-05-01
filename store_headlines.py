@@ -8,20 +8,18 @@ from dotenv import load_dotenv
 # === Load environment variables ===
 load_dotenv(override=True)
 API_KEY = os.getenv('NEWSAPI_KEY')
-NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
 
 # === Configuration ===
 PAGE_SIZE = 100
 REQUEST_DELAY = 0.1
 
 DOMAINS = [
-    "bloomberg.com", "businessinsider.com", "financialpost.com", "fortune.com",
-    "apnews.com", "washingtonpost.com", "time.com", "wsj.com"
+    "bloomberg.com", "businessinsider.com", "financialpost.com", "wsj.com"
 ]
 
 # === Database Setup ===
 
-def connect_db(db_path=NEWS_DB_PATH):
+def connect_db(db_path="data/news.db"):
     """Connect to SQLite database."""
     conn = sqlite3.connect(db_path)
     return conn, conn.cursor()
@@ -139,7 +137,7 @@ def date_to_iso(dt):
 
 # === Main Store Logic ===
 
-def store_newsapi_data(start_date_str, end_date_str, db_path=NEWS_DB_PATH):
+def store_newsapi_data(start_date_str, end_date_str, db_path="data/news.db"):
     """Fetch and store NewsAPI data across all configured domains for a given date range."""
     conn, cursor = connect_db(db_path=db_path)
     start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
@@ -164,8 +162,7 @@ def store_newsapi_data(start_date_str, end_date_str, db_path=NEWS_DB_PATH):
     print("\n✅ All articles saved to database:", db_path)
 
 # === Entrypoint ===
-
 if __name__ == "__main__":
-    store_newsapi_data("2025-04-01", "2025-04-14", db_path=NEWS_DB_PATH)
+    store_newsapi_data("2025-04-01", "2025-04-14", db_path="data/news.db")
 # Completed: 2018-12-25 to 2025-04-14
 # Last run: 2025-4-23

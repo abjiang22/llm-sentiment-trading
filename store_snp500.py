@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 # === Load environment variables ===
 load_dotenv(override=True)
 NYT_API_KEY = os.getenv('NYT_API_KEY')
-SNP_DB_PATH = os.getenv('SNP_DB_PATH')
 
 def connect_db(db_path):
     conn = sqlite3.connect(db_path)
@@ -52,7 +51,7 @@ def display_sample_data(conn):
     df = pd.read_sql_query("SELECT * FROM snp500 ORDER BY trade_date LIMIT 10", conn)
     print(df)
 
-def fetch_and_insert_snp500_data(db_path=SNP_DB_PATH):
+def fetch_and_insert_snp500_data(db_path="data/snp500.db"):
     # Load environment and connect to database
     conn, cursor = connect_db(db_path)
 
@@ -74,7 +73,7 @@ def fetch_and_insert_snp500_data(db_path=SNP_DB_PATH):
     # Close connection
     conn.close()
 
-def reorder_snp500(db_path=SNP_DB_PATH):
+def reorder_snp500(db_path="data/snp500.db"):
     conn, cursor = connect_db(db_path)
 
     df = pd.read_sql_query("SELECT * FROM snp500 ORDER BY trade_date ASC", conn)
@@ -138,5 +137,4 @@ def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
 add_percent_change_column("data/snp500.db", "snp500")
 
 #reorder_snp500()
-
 # Note: Data stored from 12/25/2018 to 4/14/2025

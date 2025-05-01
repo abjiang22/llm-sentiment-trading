@@ -11,15 +11,9 @@ os.environ["HUGGINGFACE_HUB_CACHE"] = "/workspace/.hf_cache"
 import sqlite3
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from dotenv import load_dotenv
 from huggingface_hub import login
 import re
 login(token=os.getenv("HUGGINGFACE_TOKEN"))
-
-
-# === Load environment variables ===
-load_dotenv(override=True)
-NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
 
 PROMPT_TEMPLATES = {
     "zero_shot": """
@@ -155,7 +149,7 @@ def generate_sentiment_score(tokenizer, model, texts, template_key="zero_shot"):
 
 def run_resumable_llm_sentiment_prompt(
     model_key="llama3",
-    db_path=NEWS_DB_PATH,
+    db_path="/data/news.db",
     table_name="master0",
     batch_size=8,
     template_key="zero_shot"
@@ -212,9 +206,35 @@ def run_resumable_llm_sentiment_prompt(
     print(f"🎯 Completed: scored {processed} rows.")
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run LLM-based sentiment scoring on news headlines.")
+    parser.add_argument("--model_key", type=str, default="llama3", choices=MODELS.keys(),
+                        help="Key for the model to use.")
+    parser.add_argument("--db_path", type=str, default="data/news.db",
+                        help="Path to the SQLite database.")
+    parser.add_argument("--table_name", type=str, default="master0",
+                        help="Name of the table in the database.")
+    parser.add_argument("--batch_size", type=int, default=64,
+                        help="Batch size for sentiment scoring.")
+    parser.add_argument("--template_key", type=str, default="zero_shot", choices=PROMPT_TEMPLATES.keys(),
+                        help="Prompt template to use.")
+
+    args = parser.parse_args()
+
     run_resumable_llm_sentiment_prompt(
-    model_key="deepseek_v3",
-    db_path=NEWS_DB_PATH,
-    table_name="master0",
-    batch_size=64,
-    template_key="zero_shot")
+        model_key=args.model_key,
+        db_path=args.db_path,
+        table_name=args.table_name,
+        batch_size=args.batch_size,
+        template_key=args.template_key
+    )
+
+"""
+python extract_llm_sentiment.py \
+  --model_key deepseek_v3 \
+  --db_path /data/news.db \
+  --table_name master0 \
+  --batch_size 64 \
+  --template_key zero_shot
+"""

@@ -1,12 +1,7 @@
 #FOR LOUGHRAN-MCDONALD SENTIMENT ANALYSIS - not to be confused with LLM
 import re
 import sqlite3
-import os
-from dotenv import load_dotenv
-
-# === Load environment variables ===
-load_dotenv(override=True)
-NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
+import argparse
 
 def lm_sentiment_score_normalized(text, pos_lexicon, neg_lexicon):
     words = re.findall(r'\b\w+\b', text.lower())
@@ -15,7 +10,7 @@ def lm_sentiment_score_normalized(text, pos_lexicon, neg_lexicon):
     score = (pos - neg) / (pos + neg + 1e-5)
     return round(score, 4)
 
-def run_lm_sentiment_scoring(db_path=NEWS_DB_PATH, table_name="master0",
+def run_lm_sentiment_scoring(db_path="data/news-db", table_name="master0",
                               pos_path="assets/lm_positive.txt", neg_path="assets/lm_negative.txt",
                               print_every=10000):
     # Load lexicons
@@ -57,5 +52,23 @@ def run_lm_sentiment_scoring(db_path=NEWS_DB_PATH, table_name="master0",
     conn.close()
     print(f"🎯 Completed: {total_rows} rows scored and saved to '{table_name}'.")
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run Loughran-McDonald sentiment scoring on a SQLite table.")
+    parser.add_argument("--db-path", default="data/news.db", help="Path to SQLite database")
+    parser.add_argument("--table-name", default="master0", help="Name of the table to process")
+    parser.add_argument("--pos-path", default="assets/lm_positive.txt", help="Path to positive lexicon")
+    parser.add_argument("--neg-path", default="assets/lm_negative.txt", help="Path to negative lexicon")
+    parser.add_argument("--print-every", type=int, default=10000, help="How often to print progress")
+
+    args = parser.parse_args()
+
+    run_lm_sentiment_scoring(
+        db_path=args.db_path,
+        table_name=args.table_name,
+        pos_path=args.pos_path,
+        neg_path=args.neg_path,
+        print_every=args.print_every
+    )
+
 # Example call
-run_lm_sentiment_scoring(db_path="data/news.db")
+#run_lm_sentiment_scoring(db_path="data/news.db")

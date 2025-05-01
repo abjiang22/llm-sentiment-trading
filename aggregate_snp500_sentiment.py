@@ -3,26 +3,22 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# === CONFIG ===
-SNP500_DB_PATH = "data/snp500.db"
-NEWS_DB_PATH = "data/news.db"
-
-def connect_databases():
-    conn_snp = sqlite3.connect(SNP500_DB_PATH)
-    conn_news = sqlite3.connect(NEWS_DB_PATH)
+def connect_databases(snp_db_path, news_db_path):
+    conn_snp = sqlite3.connect(snp_db_path)
+    conn_news = sqlite3.connect(news_db_path)
     return conn_snp, conn_news
 
-def ensure_column_exists(cursor, sentiment_name):
-    column_name = f"avg_sentiment_{sentiment_name}"
-    cursor.execute("PRAGMA table_info(snp500)")
+def ensure_column_exists(cursor, snp_table, sentiment_label_name):
+    column_name = f"avg_sentiment_{sentiment_label_name}"
+    cursor.execute(f"PRAGMA table_info({snp_table})")
     columns = [row[1] for row in cursor.fetchall()]
     if column_name not in columns:
-        cursor.execute(f"ALTER TABLE snp500 ADD COLUMN {column_name} REAL")
+        cursor.execute(f"ALTER TABLE {snp_table} ADD COLUMN {column_name} REAL")
 
-def load_data(conn_snp, conn_news, sentiment_column):
-    snp_df = pd.read_sql_query("SELECT * FROM snp500 ORDER BY trade_date", conn_snp)
+def load_data(conn_snp, conn_news, snp_table, news_table, sentiment_column):
+    snp_df = pd.read_sql_query(f"SELECT * FROM {snp_table} ORDER BY trade_date", conn_snp)
     news_df = pd.read_sql_query(
-        f"SELECT published_at, {sentiment_column} FROM master0 WHERE {sentiment_column} IS NOT NULL",
+        f"SELECT published_at, {sentiment_column} FROM {news_table} WHERE {sentiment_column} IS NOT NULL",
         conn_news
     )
     eastern = pytz.timezone('US/Eastern')
@@ -30,11 +26,11 @@ def load_data(conn_snp, conn_news, sentiment_column):
     news_df[sentiment_column] = pd.to_numeric(news_df[sentiment_column], errors="coerce")
     return snp_df, news_df
 
-def calculate_and_update_sentiment(snp_df, news_df, sentiment_column, sentiment_name, cursor):
+def calculate_and_update_sentiment(snp_df, news_df, snp_table, sentiment_column, sentiment_label_name, cursor):
     news_df['published_at_utc'] = pd.to_datetime(news_df['published_at'], utc=True)
     eastern = pytz.timezone('US/Eastern')
     utc = pytz.UTC
-    col = f"avg_sentiment_{sentiment_name}"
+    col = f"avg_sentiment_{sentiment_label_name}"
 
     for i in range(1, len(snp_df)):
         curr = snp_df.iloc[i]
@@ -62,31 +58,43 @@ def calculate_and_update_sentiment(snp_df, news_df, sentiment_column, sentiment_
 
         avg = float(window.mean()) if not window.empty else None
 
-        # DEBUG: print what we're about to write
         print(f"[{curr['trade_date']}] matched {len(window)} rows → avg = {avg}")
 
-        # UPDATE by trade_date instead of trade_id
         cursor.execute(
-            f"UPDATE snp500 SET {col} = ? WHERE trade_date = ?",
+            f"UPDATE {snp_table} SET {col} = ? WHERE trade_date = ?",
             (avg, curr['trade_date'])
         )
         print("  ▶ sqlite3 rowcount:", cursor.rowcount)
 
-    # commit once after the loop
     cursor.connection.commit()
 
-def build_snp500_sentiment_column(sentiment_column: str, sentiment_name: str):
-    conn_snp, conn_news = connect_databases()
+def aggregate_snp500_sentiment(
+    sentiment_column: str,
+    sentiment_label_name: str,
+    snp_db_path: str,
+    news_db_path: str,
+    snp_table: str = "snp500",
+    news_table: str = "master0"
+):
+    conn_snp, conn_news = connect_databases(snp_db_path, news_db_path)
     cursor_snp = conn_snp.cursor()
 
-    ensure_column_exists(cursor_snp, sentiment_name)
-    snp_df, news_df = load_data(conn_snp, conn_news, sentiment_column)
-    calculate_and_update_sentiment(snp_df, news_df, sentiment_column, sentiment_name, cursor_snp)
+    ensure_column_exists(cursor_snp, snp_table, sentiment_label_name)
+    snp_df, news_df = load_data(conn_snp, conn_news, snp_table, news_table, sentiment_column)
+    calculate_and_update_sentiment(snp_df, news_df, snp_table, sentiment_column, sentiment_label_name, cursor_snp)
 
     conn_snp.commit()
     conn_snp.close()
     conn_news.close()
 
-    print(f"✅ Column avg_sentiment_{sentiment_name} added and populated using '{sentiment_column}'.")
+    print(f"✅ Column avg_sentiment_{sentiment_label_name} added and populated in '{snp_table}' using '{sentiment_column}' from '{news_table}'.")
 
-build_snp500_sentiment_column("finbert_sentiment_final", "finbert")
+# Example usage
+aggregate_snp500_sentiment(
+    sentiment_column="finbert_sentiment_final",
+    sentiment_label_name="finbert",
+    snp_db_path="data/snp500.db",
+    snp_table="snp500",
+    news_db_path="data/news.db",
+    news_table="master0"
+)

@@ -1,12 +1,7 @@
 import sqlite3
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import os
-from dotenv import load_dotenv
-
-# === Load environment variables ===
-load_dotenv(override=True)
-NEWS_DB_PATH = os.getenv('NEWS_DB_PATH')
+import argparse
 
 # === Load FinBERT model/tokenizer once ===
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
@@ -33,7 +28,7 @@ def batch_probs(texts):
     ]
 
 def run_resumable_finbert_probs(
-    db_path=NEWS_DB_PATH,
+    db_path="/data/news.db",
     table_name="master0",
     batch_size=64
 ):
@@ -138,9 +133,24 @@ def add_finbert_sentiment_final(db_path, table_name):
     conn.close()
     print("✅ Finished updating 'finbert_sentiment_final' in table.")
 
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run FinBERT sentiment scoring on a SQLite table.")
+    parser.add_argument("--db-path", default="/data/news.db", help="Path to the SQLite database")
+    parser.add_argument("--table-name", default="master0", help="Name of the table to process")
+    parser.add_argument("--batch-size", type=int, default=256, help="Batch size for inference")
+    parser.add_argument("--final", action="store_true", help="Also compute finbert_sentiment_final column")
+
+    args = parser.parse_args()
+
+    run_resumable_finbert_probs(args.db_path, args.table_name, args.batch_size)
+
+    if args.final:
+        add_finbert_sentiment_final(args.db_path, args.table_name)
+
 """
 run_resumable_finbert_probs(
-    db_path=NEWS_DB_PATH,
+    db_path=/data/news.db,
     table_name="master0",
     batch_size=64
 )
@@ -148,7 +158,7 @@ run_resumable_finbert_probs(
 
 """
 add_finbert_sentiment_final(
-    db_path=NEWS_DB_PATH,
+    db_path=/data/news.db,
     table_name="master0"
 )
 """
