@@ -3,7 +3,6 @@ import os
 
 # These must be set before importing any Transformers or HF Hub modules
 os.environ["HF_HOME"] = "/workspace/.hf_cache"
-os.environ["TRANSFORMERS_CACHE"] = "/workspace/.hf_cache"
 os.environ["HF_DATASETS_CACHE"] = "/workspace/.hf_cache"
 os.environ["HF_METRICS_CACHE"] = "/workspace/.hf_cache"
 os.environ["HUGGINGFACE_HUB_CACHE"] = "/workspace/.hf_cache"

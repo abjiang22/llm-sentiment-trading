@@ -89,7 +89,7 @@ def run_lagged_price_model(
 run_lagged_price_model(
     'data/snp500.db',
     'snp500',
-    'avg_sentiment_lm',
-    save_path_with_sentiment='lm_ts_sentiment.csv',
-    save_path_without_sentiment='lm_ts_no_sentiment.csv'
+    'avg_sentiment_finbert',
+    save_path_with_sentiment='finbert_ts_sentiment.csv',
+    save_path_without_sentiment='finbert_ts_no_sentiment.csv'
 )

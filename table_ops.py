@@ -272,6 +272,58 @@ def filter_table_by_date(db_path, table_name, date_column, start_date=None, end_
     finally:
         conn.close()
 
+def count_nulls_in_column(db_path: str, table_name: str, column_name: str) -> int:
+    """
+    Counts the number of NULL values in a specified column of a SQLite table.
+
+    Parameters:
+        db_path (str): Path to the SQLite database file.
+        table_name (str): Name of the table to query.
+        column_name (str): Name of the column to check for NULLs.
+
+    Returns:
+        int: Number of NULL values in the specified column.
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    query = f"""
+    SELECT COUNT(*) FROM {table_name}
+    WHERE {column_name} IS NULL;
+    """
+    cursor.execute(query)
+    result = cursor.fetchone()[0]
+
+    conn.close()
+    print(result)
+    return result
+
+def copy_table_between_dbs(source_db_path, dest_db_path, table_name):
+    """Copy a table from one SQLite database to another."""
+    # Connect to both databases
+    source_conn = sqlite3.connect(source_db_path)
+    dest_conn = sqlite3.connect(dest_db_path)
+
+    # Read full table into DataFrame
+    df = pd.read_sql_query(f"SELECT * FROM {table_name}", source_conn)
+
+    # Write into destination DB (replace if table exists)
+    df.to_sql(table_name, dest_conn, if_exists="replace", index=False)
+
+    source_conn.close()
+    dest_conn.close()
+
+    print(f"✅ Copied table '{table_name}' from {source_db_path} → {dest_db_path}")
+
+if __name__ == "__main__":
+    copy_table_between_dbs('data/news_5_3_NEW_copy.db', 'data/news.db', 'master0_revamped')
+
+    #copy_table_between_dbs('data/news_5_3_CORRECT_DATASET.db', 'data/news.db', 'master0_revamped')
+
+
+#drop_table('data/news_5_2_2017.db', 'master0')
+#copy_table_between_dbs('data/news.db', 'data/news_5_2_2017.db', 'master0')
+
 
 #rename_table('data/news.db', 'master0_filtered', 'master0')
 #drop_column_rebuild_table('data/news.db', 'master0', 'llm_snetiment_score')

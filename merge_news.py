@@ -71,4 +71,4 @@ def merge_tables_into_target(db_path, tables, target_table):
         conn.close()
 
 tables_to_merge = ['bloomberg', 'businessinsider', 'financialpost', 'wsj']
-merge_tables_into_target(db_path="data/news.db", tables=tables_to_merge, target_table="master0")
+merge_tables_into_target(db_path="data/news_5_3_NEW_copy.db", tables=tables_to_merge, target_table="master0")

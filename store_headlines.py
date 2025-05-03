@@ -40,6 +40,7 @@ def insert_article(cursor, source_name, title, published_at, url):
         INSERT OR IGNORE INTO {source_name} (title, published_at, url)
         VALUES (?, ?, ?)
     """, (title, published_at, url))
+    return cursor.rowcount
 
 # === API Request Functions ===
 
@@ -112,6 +113,8 @@ def fetch_and_store_articles(cursor, domain, from_date, to_date):
                 break
 
             print(f"✅ Retrieved {len(articles)} articles from page {page}")
+            
+            new_articles = 0
 
             for article in articles:
                 raw_title = article.get('title')
@@ -119,14 +122,26 @@ def fetch_and_store_articles(cursor, domain, from_date, to_date):
                     continue
 
                 title = raw_title.strip()
-                published_at = article.get('publishedAt') or ''
+                published_at_raw = article.get('publishedAt')
+                published_at = ''
+                if published_at_raw:
+                    try:
+                        # Parse raw ISO string, enforce UTC, and format with offset
+                        dt = datetime.fromisoformat(published_at_raw.replace("Z", "+00:00"))
+                        published_at = dt.strftime("%Y-%m-%d %H:%M:%S%z")  # e.g. 2018-12-25 01:53:26+0000
+                        # Optional: insert colon in timezone offset to get +00:00 instead of +0000
+                        published_at = published_at[:-2] + ":" + published_at[-2:]
+                    except Exception:
+                        pass
                 url = article.get('url') or ''
 
                 if title and published_at and url:
-                    insert_article(cursor, source_name, title, published_at, url)
+                    new_articles += insert_article(cursor, source_name, title, published_at, url)
 
             time.sleep(REQUEST_DELAY)
-
+       
+            print(f"📝 Added {new_articles} new articles from page {page}")
+        
         except Exception as e:
             print(f"❌ Request failed on page {page}: {e}")
             break
@@ -163,6 +178,6 @@ def store_newsapi_data(start_date_str, end_date_str, db_path="data/news.db"):
 
 # === Entrypoint ===
 if __name__ == "__main__":
-    store_newsapi_data("2025-04-01", "2025-04-14", db_path="data/news.db")
+    store_newsapi_data("2017-12-25", "2025-04-14", db_path="data/news_5_3_NEW.db")
 # Completed: 2018-12-25 to 2025-04-14
 # Last run: 2025-4-23

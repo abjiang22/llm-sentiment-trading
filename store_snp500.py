@@ -51,17 +51,15 @@ def display_sample_data(conn):
     df = pd.read_sql_query("SELECT * FROM snp500 ORDER BY trade_date LIMIT 10", conn)
     print(df)
 
-def fetch_and_insert_snp500_data(db_path="data/snp500.db"):
-    # Load environment and connect to database
+def fetch_and_insert_snp500_data(start_date="2017-12-25", end_date="2025-04-14", db_path="data/snp500.db"):
     conn, cursor = connect_db(db_path)
-
     # Setup table
     create_snp500_table(cursor)
     conn.commit()
 
     # Fetch and insert data
     symbol = '^GSPC'
-    data = fetch_snp500_data(symbol, start_date="2018-12-25", end_date="2025-04-14")
+    data = fetch_snp500_data(symbol, start_date=start_date, end_date=end_date)
     insert_bulk_data(cursor, data)
     conn.commit()
 
@@ -73,35 +71,21 @@ def fetch_and_insert_snp500_data(db_path="data/snp500.db"):
     # Close connection
     conn.close()
 
-def reorder_snp500(db_path="data/snp500.db"):
-    conn, cursor = connect_db(db_path)
+def reorder_snp500(db_path="data/snp500.db", table_name="snp500"):
+    conn = sqlite3.connect(db_path)
+    
+    # Read entire table including all columns
+    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
 
-    df = pd.read_sql_query("SELECT * FROM snp500 ORDER BY trade_date ASC", conn)
+    # Sort by trade_date
+    df_sorted = df.sort_values(by="trade_date").reset_index(drop=True)
 
-    cursor.execute("BEGIN TRANSACTION;")
-    cursor.execute("DROP TABLE IF EXISTS snp500")
-    create_snp500_table(cursor)
+    # Optional: Overwrite the table in-place (non-destructive to columns)
+    df_sorted.to_sql(table_name, conn, if_exists="replace", index=False)
 
-    records = [
-        (
-            row['trade_date'],
-            row['open_price'],
-            row['close_price'],
-            row['high_price'],
-            row['low_price'],
-            row['volume']
-        )
-        for _, row in df.iterrows()
-    ]
-
-    cursor.executemany('''
-        INSERT OR IGNORE INTO snp500 (trade_date, open_price, close_price, high_price, low_price, volume)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', records)
-    conn.commit()
-
-    print("\u2705 S&P 500 table reordered by ascending trade_date.")
     conn.close()
+    print("✅ S&P 500 table reordered by ascending trade_date")
+
 
 def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
     # Connect to the database
@@ -134,7 +118,8 @@ def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
     conn.close()
     print("✅ percent_change_close column updated efficiently using pandas.")
 
-add_percent_change_column("data/snp500.db", "snp500")
+#fetch_and_insert_snp500_data(start_date="2017-12-25", end_date="2025-04-14", db_path="data/snp500.db")
+#add_percent_change_column("data/snp500.db", "snp500")
 
-#reorder_snp500()
+reorder_snp500()
 # Note: Data stored from 12/25/2018 to 4/14/2025
