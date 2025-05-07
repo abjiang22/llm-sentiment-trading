@@ -118,8 +118,46 @@ def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
     conn.close()
     print("✅ percent_change_close column updated efficiently using pandas.")
 
+import sqlite3
+import pandas as pd
+
+import sqlite3
+import pandas as pd
+
+def add_increase_column(db_path="data/snp500.db", table_name="snp500"):
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
+
+    # Load the table into a DataFrame, sorted by trade_date
+    df = pd.read_sql_query(
+        f"SELECT trade_id, trade_date, open_price, close_price FROM {table_name} ORDER BY trade_date", conn
+    )
+
+    # Calculate if the price increased (1 if close > open, else 0)
+    df["increase"] = (df["close_price"] > df["open_price"]).astype(int)
+
+    # Check if column exists, add it if not
+    cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "increase" not in columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN increase INTEGER")
+
+    # Prepare batch update data
+    updates = [(row.increase, row.trade_id) for row in df.itertuples() if pd.notnull(row.increase)]
+
+    # Execute batch updates
+    cursor.executemany(f"""
+        UPDATE {table_name}
+        SET increase = ?
+        WHERE trade_id = ?
+    """, updates)
+
+    conn.commit()
+    conn.close()
+    print("✅ increase column (0/1) updated successfully.")
+
 #fetch_and_insert_snp500_data(start_date="2017-12-25", end_date="2025-04-14", db_path="data/snp500.db")
 #add_percent_change_column("data/snp500.db", "snp500")
-
-reorder_snp500()
+add_increase_column("data/snp500.db", "snp500")
 # Note: Data stored from 12/25/2018 to 4/14/2025

@@ -315,10 +315,36 @@ def copy_table_between_dbs(source_db_path, dest_db_path, table_name):
 
     print(f"✅ Copied table '{table_name}' from {source_db_path} → {dest_db_path}")
 
-if __name__ == "__main__":
-    copy_table_between_dbs('data/news_5_3_NEW_copy.db', 'data/news.db', 'master0_revamped')
+def filter_rows(db_path: str, table_name: str, column_name: str, allowed_values: tuple):
+    """
+    Keep only rows with column_name in the allowed list and delete all others.
 
-    #copy_table_between_dbs('data/news_5_3_CORRECT_DATASET.db', 'data/news.db', 'master0_revamped')
+    Args:
+        db_path (str): Path to SQLite database.
+        table_name (str): Name of the table to filter.
+        column_name (str): Name of the column to filter by.
+        allowed_values (tuple): Allowed values to keep.
+    """    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Delete rows that are NOT in the allowed list
+    placeholders = ','.join('?' for _ in allowed_values)
+    query = f"""
+        DELETE FROM {table_name}
+        WHERE {column_name} NOT IN ({placeholders})
+    """
+    cursor.execute(query, allowed_values)
+    conn.commit()
+    conn.close()
+
+    print(f"✅ Table `{table_name}` filtered to only keep rows with: {', '.join(allowed_values)}")
+
+if __name__ == "__main__":
+    rename_table('data/news.db', 'master0', 'master0_5_2')
+    rename_table('data/news.db', 'master0_revamped', 'master0')
+
+#copy_table_between_dbs('data/news_5_3_CORRECT_DATASET.db', 'data/news.db', 'master0_revamped')
 
 
 #drop_table('data/news_5_2_2017.db', 'master0')

@@ -1,79 +1,103 @@
+#!/usr/bin/env python3
+# FOR LOUGHRAN‑MCDONALD SENTIMENT (resumable version)
+
 import re
 import sqlite3
 import argparse
+from pathlib import Path
 
-def lm_sentiment_score_normalized(text, pos_lexicon, neg_lexicon):
-    words = re.findall(r'\b\w+\b', text.lower())
-    pos = sum(1 for w in words if w in pos_lexicon)
-    neg = sum(1 for w in words if w in neg_lexicon)
-    score = (pos - neg) / (pos + neg + 1e-5)
-    return round(score, 4)
+TOKENS_RE = re.compile(r'\b\w+\b')          # pre‑compiled once
 
-def run_lm_sentiment_scoring(db_path="data/news.db", table_name="master0",
-                              pos_path="assets/lm_positive.txt", neg_path="assets/lm_negative.txt",
-                              print_every=10000, batch_size=5000):
+def lm_sentiment_score_normalized(text: str,
+                                  pos_lex: set[str],
+                                  neg_lex: set[str]) -> float:
+    words = TOKENS_RE.findall(text.lower())
+    pos = neg = 0
+    for w in words:
+        if w in pos_lex:
+            pos += 1
+        elif w in neg_lex:
+            neg += 1
+    den = pos + neg
+    return 0.0 if den == 0 else round((pos - neg) / den, 4)
 
-    # Load lexicons
+
+def run_lm_sentiment_scoring(db_path: str,
+                             table_name: str,
+                             pos_path: str,
+                             neg_path: str,
+                             print_every: int = 1_000,
+                             batch_size: int = 5_000):
+
+    # --- Load lexicons -------------------------------------------------------
     with open(pos_path) as f:
-        positive_words = set(line.strip().lower() for line in f if line.strip())
+        pos_words = {ln.strip().lower() for ln in f if ln.strip()}
     with open(neg_path) as f:
-        negative_words = set(line.strip().lower() for line in f if line.strip())
+        neg_words = {ln.strip().lower() for ln in f if ln.strip()}
 
-    # Connect to DB
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    # --- Connect & prepare DB -----------------------------------------------
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
 
-    # Ensure lm_sentiment_score column exists
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    existing_cols = [row[1] for row in cursor.fetchall()]
-    if "lm_sentiment_score" not in existing_cols:
-        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN lm_sentiment_score REAL")
+        # Fast journal settings (safe enough for single‑process work)
+        cur.execute("PRAGMA journal_mode=WAL;")
+        cur.execute("PRAGMA synchronous=NORMAL;")
 
-    # Use resumable query: only process rows that haven't been scored
-    cursor.execute(f"""
-        SELECT id, title_clean FROM {table_name}
-        WHERE title_clean IS NOT NULL AND lm_sentiment_score IS NULL
-    """)
-    rows = cursor
+        # Ensure target column and helper index exist
+        cur.execute(f"PRAGMA table_info({table_name})")
+        if "lm_sentiment_score" not in (col[1] for col in cur.fetchall()):
+            cur.execute(f"ALTER TABLE {table_name} ADD COLUMN lm_sentiment_score REAL")
 
-    # Begin transaction
-    conn.execute("BEGIN TRANSACTION")
+        cur.execute(f"""
+            CREATE INDEX IF NOT EXISTS idx_{table_name}_lm_null
+            ON {table_name} (lm_sentiment_score)
+            WHERE lm_sentiment_score IS NULL
+        """)
 
-    updates = []
-    total = 0
-    for idx, (row_id, title) in enumerate(rows, start=1):
-        score = lm_sentiment_score_normalized(title, positive_words, negative_words)
-        updates.append((score, row_id))
-        total += 1
+        # --- Stream rows in chunks ------------------------------------------
+        total = 0
+        cur.execute(f"""
+            SELECT id, title_clean
+            FROM {table_name}
+            WHERE title_clean IS NOT NULL
+              AND title_clean <> ''
+              AND lm_sentiment_score IS NULL
+        """)
 
-        if len(updates) >= batch_size:
-            cursor.executemany(
+        while True:
+            rows = cur.fetchmany(batch_size)
+            if not rows:
+                break
+
+            updates = [
+                (lm_sentiment_score_normalized(title, pos_words, neg_words), row_id)
+                for row_id, title in rows
+            ]
+
+            cur.executemany(
                 f"UPDATE {table_name} SET lm_sentiment_score = ? WHERE id = ?",
                 updates
             )
-            updates.clear()
-            if total % print_every < batch_size:
-                print(f"✅ Updated {total} rows so far (last row_id: {row_id})...")
+            conn.commit()                      # <-- guarantees resumability
+            total += len(updates)
 
-    if updates:
-        cursor.executemany(
-            f"UPDATE {table_name} SET lm_sentiment_score = ? WHERE id = ?",
-            updates
-        )
+            if total % print_every == 0:
+                last_id = updates[-1][1]
+                print(f"✅ Updated {total:,} rows (last id {last_id})")
 
-    conn.commit()
-    conn.close()
-    print(f"🎯 Done: {total} new rows scored and updated in '{table_name}'.")
+    print(f"🎯 Done: {total:,} new rows scored and saved to '{table_name}'.")
+
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--db-path", default="data/news.db")
-    parser.add_argument("--table-name", default="master0_revamped")
-    parser.add_argument("--pos-path", default="assets/lm_positive.txt")
-    parser.add_argument("--neg-path", default="assets/lm_negative.txt")
-    parser.add_argument("--print-every", type=int, default=1000)
-    parser.add_argument("--batch-size", type=int, default=5000)
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--db-path",     default="data/news.db")
+    ap.add_argument("--table-name",  default="master0_revamped")
+    ap.add_argument("--pos-path",    default="assets/lm_positive.txt")
+    ap.add_argument("--neg-path",    default="assets/lm_negative.txt")
+    ap.add_argument("--print-every", type=int, default=1000)
+    ap.add_argument("--batch-size",  type=int, default=1000)
+    args = ap.parse_args()
 
     run_lm_sentiment_scoring(
         db_path=args.db_path,
@@ -81,5 +105,5 @@ if __name__ == "__main__":
         pos_path=args.pos_path,
         neg_path=args.neg_path,
         print_every=args.print_every,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
     )

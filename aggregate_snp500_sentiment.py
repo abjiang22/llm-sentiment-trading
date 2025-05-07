@@ -102,10 +102,10 @@ def aggregate_snp500_sentiment(
 
 # Example usage
 aggregate_snp500_sentiment(
-    sentiment_column="lm_sentiment_score",
-    sentiment_label_name="lm",
-    snp_db_path="data/snp500.db",
-    news_db_path="data/news.db",
+    sentiment_column="finbert_sentiment_final",
+    sentiment_label_name="finbert",
+    snp_db_path="data/snp500_5_6.db",
+    news_db_path="data/news_5_6.db",
     snp_table="snp500",
     news_table="master0"
 )

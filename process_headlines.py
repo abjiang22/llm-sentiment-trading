@@ -99,6 +99,77 @@ def exclude_market_hours(
         print(f"⚠️  {len(still_bad):,} market‑hour rows still present!  "
               f"First example → {example}")
 
+def keep_only_pre_market_articles(
+    news_db_path:   str = "data/news.db",
+    news_table_name: str = "master0",
+    snp500_db_path: str = "data/snp500.db",
+    snp500_table_name: str = "snp500",
+    strict_weekdays: bool = False
+):
+    import sqlite3
+    import pandas as pd
+    import pytz
+    from datetime import timedelta, time as dtime
+
+    eastern = pytz.timezone("America/New_York")
+    mkt_open_time = dtime(9, 30)
+
+    with sqlite3.connect(news_db_path) as nconn, sqlite3.connect(snp500_db_path) as sconn:
+        # ────────────────── 1. Load trading days ──────────────────────────────
+        trading_df = pd.read_sql(f"SELECT trade_date FROM {snp500_table_name}", sconn)
+        trading_days = set(pd.to_datetime(trading_df.trade_date).dt.date)
+
+        if strict_weekdays and trading_days:
+            full_range = pd.date_range(min(trading_days), max(trading_days), freq="D")
+            weekdays   = {d.date() for d in full_range if d.weekday() < 5}
+            trading_days |= weekdays
+
+        # ────────────────── 2. Determine primary key and read data ────────────
+        pragma = nconn.execute(f"PRAGMA table_info({news_table_name})").fetchall()
+        id_pk  = any(col[1] == "id" and col[5] == 1 for col in pragma)
+
+        pk_sel = "id AS rid, *" if id_pk else "rowid AS rid, *"
+        df     = pd.read_sql(f"SELECT {pk_sel} FROM {news_table_name}", nconn)
+
+        # ────────────────── 3. Timestamp conversion ───────────────────────────
+        orig_ts     = df.published_at.astype(str)
+        published_utc = pd.to_datetime(orig_ts, utc=True, errors="coerce")
+        published_et  = published_utc.dt.tz_convert(eastern)
+
+        # ────────────────── 4. Build trading day window mask ──────────────────
+        keep_mask = pd.Series(False, index=df.index)
+
+        for date in trading_days:
+            open_dt = eastern.localize(pd.Timestamp.combine(date, mkt_open_time))
+            lower_bound = open_dt - timedelta(hours=12)
+            upper_bound = open_dt
+            in_window = (published_et >= lower_bound) & (published_et < upper_bound)
+            keep_mask |= in_window
+
+        kept_df = df[keep_mask].copy()
+        kept_df["published_at"] = orig_ts.loc[kept_df.index]
+
+        if "id" in kept_df.columns:
+            kept_df["id"] = (
+                pd.to_numeric(kept_df["id"], downcast="integer", errors="coerce")
+                .astype("Int64")
+            )
+
+        # ────────────────── 5. Write filtered data back ───────────────────────
+        dtype_map = {"published_at": "TEXT"}
+        if "id" in kept_df.columns:
+            dtype_map["id"] = "INTEGER"
+
+        kept_df.drop(columns=["rid"]).to_sql(
+            news_table_name,
+            nconn,
+            if_exists="replace",
+            index=False,
+            dtype=dtype_map
+        )
+
+        print(f"✅ Kept {len(kept_df):,} article(s) within 12h before market open.")
+
 def standardize_published_at(
     db_path: str = "data/news.db",
     table:   str = "master0",
@@ -284,15 +355,15 @@ def remove_invalid_titles(db_path="data/news.db", table_name="master0"):
     print(f"✅ Deleted {len(bad_ids)} row(s) with invalid characters in `title`.")
     conn.close()
 
-def process_headlines(news_db_path="data/news_5_2_2017.db", news_table_name="master0", snp500_db_path="data/snp500.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at"):
-    exclude_market_hours(news_db_path, news_table_name, snp500_db_path, snp500_table_name)
+def process_headlines(news_db_path="data/news.db", news_table_name="master0", snp500_db_path="data/snp500.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at"):
+    keep_only_pre_market_articles(news_db_path, news_table_name, snp500_db_path, snp500_table_name)
     standardize_published_at(news_db_path, news_table_name, 10000)
     remove_duplicates(news_db_path, news_table_name, group_by_cols)
     clean_titles(news_db_path, news_table_name)
     remove_invalid_titles(news_db_path, news_table_name)
     reindex_table_by_column(news_db_path, news_table_name, index_col)
 
-process_headlines(news_db_path="data/news_5_3_NEW_copy.db", news_table_name="master0_revamped", snp500_db_path="data/snp500.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at")
+process_headlines(news_db_path="data/news_5_6.db", news_table_name="master0", snp500_db_path="data/snp500_5_6.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at")
 
 #exclude_market_hours("data/news.db", "data/snp500.db")
 #clean_titles(db_path="data/news.db", table_name="master0")R

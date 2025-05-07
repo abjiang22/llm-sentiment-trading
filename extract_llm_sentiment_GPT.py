@@ -13,7 +13,7 @@ from openai import OpenAI
 FAILED_OUTPUTS_FILE   = "failed_sentiment_rows.csv"
 INTER_REQUEST_DELAY   = 0.1    # seconds between calls
 MAX_RETRIES           = 5
-BASE_BACKOFF_DELAY    = 1.0    # initial backoff in seconds
+BASE_BACKOFF_DELAY    = 2.0    # initial backoff in seconds
 
 PROMPT_TEMPLATES = {
     "zero_shot": """
