@@ -1,78 +1,66 @@
 import sqlite3
+import re
 
-import sqlite3
+def drop_columns_preserve_schema(db_path, table_name, columns_to_keep):
+    """
+    Drops all columns from the table not in columns_to_keep, preserving types, constraints, and indexes.
+    """
 
-def create_revamped_table():
-    # Connect to the target DB (where we create the new table)
-    conn_main = sqlite3.connect("data/news_5_3_NEW_copy.db")
-    cursor_main = conn_main.cursor()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
 
-    # Attach the source DB (which has the extra sentiment columns)
-    cursor_main.execute("ATTACH DATABASE 'data/news_5_3_CORRECT_DATASET.db' AS news_extra")
+    # === Step 1: Extract full CREATE TABLE SQL ===
+    cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+    result = cursor.fetchone()
+    if not result:
+        raise ValueError(f"Table '{table_name}' does not exist in the database.")
+    create_sql = result[0]
 
-    # Drop existing table if it exists
-    cursor_main.execute("DROP TABLE IF EXISTS master0_revamped")
+    # === Step 2: Parse column definitions ===
+    col_defs = re.findall(r'\s*(\w+[^,]*),?', create_sql[create_sql.find('(')+1:create_sql.rfind(')')])
+    col_defs_cleaned = []
+    for col_def in col_defs:
+        col_name = re.match(r'^`?(\w+)`?', col_def.strip()).group(1)
+        if col_name in columns_to_keep:
+            col_defs_cleaned.append(col_def.strip())
 
-    # Create the new table by joining on title_clean and pulling sentiment fields
-    cursor_main.execute("""
-        CREATE TABLE master0_revamped AS
-        SELECT 
-            a.*, 
-            b.lm_sentiment_score,
-            b.finbert_sentiment_pos,
-            b.finbert_sentiment_neutral,
-            b.finbert_sentiment_neg,
-            b.finbert_sentiment_final,
-            b.llm_sentiment_score_gpt4o_zero_shot
-        FROM master0 a
-        LEFT JOIN news_extra.master0_revamped b
-        ON a.title_clean = b.title_clean
-    """)
+    if not col_defs_cleaned:
+        raise ValueError("No columns to keep. You must preserve at least one column.")
 
-    # Detach the extra DB
-    cursor_main.execute("DETACH DATABASE news_extra")
+    new_table_sql = f"CREATE TABLE {table_name}_new (\n  " + ",\n  ".join(col_defs_cleaned) + "\n);"
+    cursor.execute("BEGIN TRANSACTION;")
+    cursor.execute(new_table_sql)
 
-    conn_main.commit()
-    conn_main.close()
+    # === Step 3: Copy data into the new table ===
+    cols_str = ', '.join(columns_to_keep)
+    cursor.execute(f"INSERT INTO {table_name}_new ({cols_str}) SELECT {cols_str} FROM {table_name}")
 
-    print("✅ Created master0_revamped with sentiment columns merged from news.db.")
+    # === Step 4: Drop old indexes ===
+    cursor.execute(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='{table_name}'")
+    indexes = cursor.fetchall()
 
-create_revamped_table()
+    # === Step 5: Drop old table and rename new one ===
+    cursor.execute(f"DROP TABLE {table_name}")
+    cursor.execute(f"ALTER TABLE {table_name}_new RENAME TO {table_name}")
 
+    # === Step 6: Recreate relevant indexes ===
+    for (index_name,) in indexes:
+        cursor.execute(f"SELECT sql FROM sqlite_master WHERE name='{index_name}'")
+        index_sql = cursor.fetchone()[0]
+        if index_sql:
+            # Replace old table name in index SQL
+            new_index_sql = index_sql.replace(f"ON {table_name}_new", f"ON {table_name}")
+            # Check if index only uses preserved columns
+            if all(col in columns_to_keep for col in re.findall(r'\b\w+\b', new_index_sql.split("(", 1)[1])):
+                cursor.execute(new_index_sql)
 
-"""
+    conn.commit()
+    conn.close()
+    print(f"✅ Dropped columns and preserved schema for '{table_name}'.")
 
-# === Step 2: Connect to source and target DBs ===
-src_conn = sqlite3.connect("data/news_4_30.db")
-dst_conn = sqlite3.connect("data/news.db")
-
-src_cursor = src_conn.cursor()
-dst_cursor = dst_conn.cursor()
-
-# === Step 3: Get the schema for master0 ===
-src_cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='master0'")
-create_table_sql = src_cursor.fetchone()
-
-if create_table_sql is None:
-    raise ValueError("Table 'master0' does not exist in the source database.")
-
-# === Step 4: Create the table in the destination ===
-dst_cursor.execute(create_table_sql[0])
-
-# === Step 5: Copy data from master0 ===
-src_cursor.execute("SELECT * FROM master0")
-rows = src_cursor.fetchall()
-
-# Get column count to construct insert statement
-col_count = len(src_cursor.description)
-placeholders = ", ".join("?" * col_count)
-dst_cursor.executemany(f"INSERT INTO master0 VALUES ({placeholders})", rows)
-
-# === Step 6: Commit and close ===
-dst_conn.commit()
-src_conn.close()
-dst_conn.close()
-
-print("Successfully copied table 'master0' to news.db.")
-"""
-
+# Example usage:
+drop_columns_preserve_schema(
+    db_path='data/snp500.db',
+    table_name='snp500',
+    columns_to_keep=['trade_id', 'trade_date', 'open_price', 'close_price', 'high_price', 'low_price', 'volume']
+)

@@ -9,6 +9,7 @@ cursor = conn.cursor()
 cursor.execute('''
     SELECT source, COUNT(*) AS article_count
     FROM master0
+    WHERE published_at BETWEEN '2018-01-01' AND '2023-12-31'
     GROUP BY source
     ORDER BY article_count DESC
 ''')

@@ -161,6 +161,78 @@ def drop_column_rebuild_table(db_path, table_name, column_to_drop):
     finally:
         conn.close()
 
+def rename_column_rebuild_table(db_path, table_name, old_column_name, new_column_name):
+    """
+    Renames a column in a SQLite table by rebuilding it with preserved column types.
+    """
+    # Connect to database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Load current data
+    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+
+    # Early exits
+    if old_column_name not in df.columns:
+        print(f"⚠️ Column '{old_column_name}' does not exist in table '{table_name}'.")
+        conn.close()
+        return
+    # Rename column in memory
+    df_renamed = df.rename(columns={old_column_name: new_column_name})
+
+    # Get original schema
+    cursor.execute(f"PRAGMA table_info({table_name});")
+    schema_info = cursor.fetchall()
+
+    # Map column name to type
+    col_types = {
+        (new_column_name if col[1] == old_column_name else col[1]): col[2]
+        for col in schema_info
+    }
+
+    # Column order
+    column_order = list(df_renamed.columns)
+
+    try:
+        cursor.execute("BEGIN TRANSACTION;")
+        cursor.execute(f"ALTER TABLE {table_name} RENAME TO {table_name}_old;")
+
+        # Construct CREATE TABLE statement with preserved types
+        create_columns = []
+        for col in column_order:
+            col_type = col_types.get(col, "TEXT")  # fallback to TEXT
+            if col == 'id' and col_type.upper().startswith("INTEGER"):
+                create_columns.append("id INTEGER PRIMARY KEY AUTOINCREMENT")
+            else:
+                create_columns.append(f"{col} {col_type}")
+
+        cursor.execute(f'''
+            CREATE TABLE {table_name} (
+                {', '.join(create_columns)}
+            );
+        ''')
+
+        # Insert data
+        insert_cols = [col for col in column_order if col != 'id']
+        placeholders = ', '.join(['?' for _ in insert_cols])
+        insert_sql = f'''
+            INSERT INTO {table_name} ({', '.join(insert_cols)})
+            VALUES ({placeholders});
+        '''
+        cursor.executemany(insert_sql, df_renamed[insert_cols].values.tolist())
+
+        # Cleanup
+        cursor.execute(f"DROP TABLE {table_name}_old;")
+        conn.commit()
+        print(f"✅ Column '{old_column_name}' renamed to '{new_column_name}' in table '{table_name}' with types preserved.")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Failed to rename column: {e}")
+
+    finally:
+        conn.close()
+
 def reindex_table_by_column(db_path, table_name, specified_column):
     """
     Reindex a table by a specified column in ascending order and reassign id sequentially.
@@ -341,8 +413,8 @@ def filter_rows(db_path: str, table_name: str, column_name: str, allowed_values:
     print(f"✅ Table `{table_name}` filtered to only keep rows with: {', '.join(allowed_values)}")
 
 if __name__ == "__main__":
-    rename_table('data/news.db', 'master0', 'master0_5_2')
-    rename_table('data/news.db', 'master0_revamped', 'master0')
+    drop_table('data/snp500.db', 'snp500')
+    copy_table('data/snp500.db', 'snp500_5_9', 'snp500')
 
 #copy_table_between_dbs('data/news_5_3_CORRECT_DATASET.db', 'data/news.db', 'master0_revamped')
 

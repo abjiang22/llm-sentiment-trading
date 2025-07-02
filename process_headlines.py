@@ -363,7 +363,7 @@ def process_headlines(news_db_path="data/news.db", news_table_name="master0", sn
     remove_invalid_titles(news_db_path, news_table_name)
     reindex_table_by_column(news_db_path, news_table_name, index_col)
 
-process_headlines(news_db_path="data/news_5_6.db", news_table_name="master0", snp500_db_path="data/snp500_5_6.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at")
+process_headlines(news_db_path="data/news.db", news_table_name="master0", snp500_db_path="data/snp500.db", snp500_table_name="snp500", group_by_cols=["title"], index_col="published_at")
 
 #exclude_market_hours("data/news.db", "data/snp500.db")
 #clean_titles(db_path="data/news.db", table_name="master0")R

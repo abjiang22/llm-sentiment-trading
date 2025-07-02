@@ -110,7 +110,9 @@ def prepare_attention_data(
             daily["close_price"].shift(lag) - daily["open_price"].shift(lag)
         ) / daily["open_price"].shift(lag)
 
-    lag_cols = [f"prev_return_t-{i}" for i in range(1, n_days_lag + 1)]
+    for col in lag_cols:
+        daily[col] = pd.to_numeric(daily[col], errors="coerce")
+
     daily = daily.dropna(subset=lag_cols)
 
     return daily, lag_cols, len(sentiment_cols)
@@ -155,12 +157,12 @@ def rolling_evaluation(daily, lag_cols, sentiment_dim, embed_dim=384, n_lags=3,
         train_samples = []
         for _, row in train_rows.iterrows():
             emb = torch.tensor(np.vstack(row["combined"]), dtype=torch.float)
-            lags = torch.tensor(row[lag_cols].values, dtype=torch.float)
+            lags = torch.tensor(row[lag_cols].astype(np.float32).values, dtype=torch.float)
             label = int(row["increase"])
             train_samples.append((emb, lags, label))
 
         test_emb = torch.tensor(np.vstack(test_row["combined"]), dtype=torch.float).unsqueeze(0)
-        test_lags = torch.tensor(test_row[lag_cols].values, dtype=torch.float).unsqueeze(0)
+        test_lags = torch.tensor(test_row[lag_cols].astype(np.float32).values, dtype=torch.float).unsqueeze(0)
         true_label = int(test_row["increase"])
 
         train_loader = DataLoader(NewsDataset(train_samples), batch_size=16, shuffle=True, collate_fn=collate_fn)

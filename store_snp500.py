@@ -86,78 +86,50 @@ def reorder_snp500(db_path="data/snp500.db", table_name="snp500"):
     conn.close()
     print("✅ S&P 500 table reordered by ascending trade_date")
 
-
-def add_percent_change_column(db_path="data/snp500.db", table_name="snp500"):
+def add_increase_and_daily_return_columns(db_path="data/snp500.db", table_name="snp500"):
     # Connect to the database
     conn = sqlite3.connect(db_path)
 
-    # Load the table into a DataFrame, sorted by trade_date
-    df = pd.read_sql_query(f"SELECT trade_id, trade_date, close_price FROM {table_name} ORDER BY trade_date", conn)
-
-    # Calculate percent change between current and previous close_price
-    df["percent_change_close"] = df["close_price"].pct_change() * 100
-    df["percent_change_close"] = df["percent_change_close"].round(4)
-
-    # Check if column exists, add it if not
-    cursor = conn.cursor()
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    columns = [row[1] for row in cursor.fetchall()]
-    if "percent_change_close" not in columns:
-        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN percent_change_close REAL")
-
-    # Write the percent_change values back into the database using trade_id
-    for row in df.itertuples():
-        if pd.notnull(row.percent_change_close):
-            cursor.execute(f"""
-                UPDATE {table_name}
-                SET percent_change_close = ?
-                WHERE trade_id = ?
-            """, (row.percent_change_close, row.trade_id))
-
-    conn.commit()
-    conn.close()
-    print("✅ percent_change_close column updated efficiently using pandas.")
-
-import sqlite3
-import pandas as pd
-
-import sqlite3
-import pandas as pd
-
-def add_increase_column(db_path="data/snp500.db", table_name="snp500"):
-    # Connect to the database
-    conn = sqlite3.connect(db_path)
-
-    # Load the table into a DataFrame, sorted by trade_date
+    # Load the table into a DataFrame
     df = pd.read_sql_query(
         f"SELECT trade_id, trade_date, open_price, close_price FROM {table_name} ORDER BY trade_date", conn
     )
 
-    # Calculate if the price increased (1 if close > open, else 0)
+    df["open_price"] = pd.to_numeric(df["open_price"], errors="coerce")
+    df["close_price"] = pd.to_numeric(df["close_price"], errors="coerce")
+
+    # Calculate 'increase' (1 if close > open, else 0)
     df["increase"] = (df["close_price"] > df["open_price"]).astype(int)
 
-    # Check if column exists, add it if not
+    # Calculate 'return' = (close - open) / open
+    df["daily_return"] = (df["close_price"] - df["open_price"]) / df["open_price"]
+
+    # Check existing columns
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table_name})")
     columns = [row[1] for row in cursor.fetchall()]
+
+    # Add columns if they don't exist
     if "increase" not in columns:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN increase INTEGER")
+    if "daily_return" not in columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN daily_return REAL")
 
-    # Prepare batch update data
-    updates = [(row.increase, row.trade_id) for row in df.itertuples() if pd.notnull(row.increase)]
+    # Batch update values
+    updates = [(row.increase, row.daily_return, row.trade_id) for row in df.itertuples() if pd.notnull(row.daily_return)]
 
-    # Execute batch updates
     cursor.executemany(f"""
         UPDATE {table_name}
-        SET increase = ?
+        SET increase = ?, daily_return = ?
         WHERE trade_id = ?
     """, updates)
 
     conn.commit()
     conn.close()
-    print("✅ increase column (0/1) updated successfully.")
+    print("✅ 'increase' and 'daily_return' columns updated successfully.")
 
-#fetch_and_insert_snp500_data(start_date="2017-12-25", end_date="2025-04-14", db_path="data/snp500.db")
+
+#fetch_and_insert_snp500_data(start_date="2017-12-25", end_date="2023-12-31", db_path="data/snp500.db")
+add_increase_and_daily_return_columns()
 #add_percent_change_column("data/snp500.db", "snp500")
-add_increase_column("data/snp500.db", "snp500")
 # Note: Data stored from 12/25/2018 to 4/14/2025
